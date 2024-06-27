@@ -2,7 +2,6 @@ package wal
 
 import (
 	"encoding/binary"
-	"io"
 	"sync"
 
 	"github.com/Aneesh495/meridian/pkg/core"
