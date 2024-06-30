@@ -6,6 +6,8 @@ type Node16 struct {
 	keys     [16]byte
 	children [16]Node
 	num      uint8
+	val      []byte
+	hasVal   bool
 }
 
 func (n *Node16) Type() NodeType {
@@ -61,6 +63,8 @@ func (n *Node16) shrink() *Node4 {
 	n4 := &Node4{
 		prefix: n.prefix,
 		num:    n.num,
+		val:    n.val,
+		hasVal: n.hasVal,
 	}
 	copy(n4.keys[:], n.keys[:n.num])
 	copy(n4.children[:], n.children[:n.num])
@@ -71,9 +75,11 @@ func (n *Node16) grow() *Node48 {
 	n48 := &Node48{
 		prefix: n.prefix,
 		num:    n.num,
+		val:    n.val,
+		hasVal: n.hasVal,
 	}
 	for i := range n48.childIndex {
-		n48.childIndex[i] = 0xFF // 0xFF denotes empty slot
+		n48.childIndex[i] = 0xFF
 	}
 	for i := 0; i < int(n.num); i++ {
 		n48.childIndex[n.keys[i]] = byte(i)

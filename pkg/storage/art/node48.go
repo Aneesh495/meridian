@@ -6,6 +6,8 @@ type Node48 struct {
 	childIndex [256]byte
 	children   [48]Node
 	num        uint8
+	val        []byte
+	hasVal     bool
 }
 
 func (n *Node48) Type() NodeType {
@@ -25,7 +27,6 @@ func (n *Node48) addChild(b byte, child Node) bool {
 		return false
 	}
 
-	// Find first empty slot in children array
 	slot := 0
 	for slot < 48 && n.children[slot] != nil {
 		slot++
@@ -56,6 +57,8 @@ func (n *Node48) shrink() *Node16 {
 	n16 := &Node16{
 		prefix: n.prefix,
 		num:    n.num,
+		val:    n.val,
+		hasVal: n.hasVal,
 	}
 	idx := 0
 	for b := 0; b < 256; b++ {
@@ -73,6 +76,8 @@ func (n *Node48) grow() *Node256 {
 	n256 := &Node256{
 		prefix: n.prefix,
 		num:    uint16(n.num),
+		val:    n.val,
+		hasVal: n.hasVal,
 	}
 	for b := 0; b < 256; b++ {
 		slot := n.childIndex[b]

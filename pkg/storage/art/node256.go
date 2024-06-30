@@ -5,6 +5,8 @@ type Node256 struct {
 	prefix   Prefix
 	children [256]Node
 	num      uint16
+	val      []byte
+	hasVal   bool
 }
 
 func (n *Node256) Type() NodeType {
@@ -40,6 +42,8 @@ func (n *Node256) shrink() *Node48 {
 	n48 := &Node48{
 		prefix: n.prefix,
 		num:    uint8(n.num),
+		val:    n.val,
+		hasVal: n.hasVal,
 	}
 	for i := range n48.childIndex {
 		n48.childIndex[i] = 0xFF
