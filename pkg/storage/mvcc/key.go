@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/hlc"
 )
 
@@ -75,7 +76,7 @@ func DecodeVersionKey(encoded []byte) ([]byte, hlc.Timestamp, bool, error) {
 	ts := hlc.Timestamp{
 		WallTime: int64(^invWall),
 		Logical:  ^invLogical,
-		NodeID:   nodeID,
+		NodeID:   core.NodeID(nodeID),
 	}
 
 	isTombstone := (tag == TagTombstone)

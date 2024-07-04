@@ -68,7 +68,7 @@ func (e *Engine) Get(userKey []byte, readTS hlc.Timestamp) ([]byte, hlc.Timestam
 	lockKey := EncodeLockKey(userKey)
 	if lockBytes, found := e.tree.Search(lockKey); found {
 		var lock Lock
-		if err := json.Unmarshal(lockBytes, &lock); == nil {
+		if err := json.Unmarshal(lockBytes, &lock); err == nil {
 			// If lock was placed before or at readTS, read is blocked
 			if !readTS.Less(lock.StartTS) {
 				return nil, hlc.ZeroTimestamp, core.ErrKeyLocked
