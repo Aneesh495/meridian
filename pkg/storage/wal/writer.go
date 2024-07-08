@@ -8,11 +8,6 @@ import (
 )
 
 // RecordHeaderSize is the size in bytes of an individual WAL record header (25 bytes).
-// [0:4]   PayloadLength (uint32)
-// [4:5]   OpType (uint8)
-// [5:13]  Term (uint64)
-// [13:21] Index (uint64)
-// [21:25] Checksum CRC32-C (uint32)
 const RecordHeaderSize = 25
 
 // SyncMode determines disk durability frequency.
@@ -43,13 +38,18 @@ type Writer struct {
 	lastTerm    core.Term
 }
 
-// NewWriter creates a new WAL Writer in the specified directory.
+// NewWriter creates a new WAL Writer in the specified directory starting with segment 1.
 func NewWriter(dir string, maxSegSize uint64, mode SyncMode) (*Writer, error) {
+	return NewWriterWithStartID(dir, 1, maxSegSize, mode)
+}
+
+// NewWriterWithStartID creates a WAL Writer starting at startID.
+func NewWriterWithStartID(dir string, startID uint64, maxSegSize uint64, mode SyncMode) (*Writer, error) {
 	if maxSegSize == 0 {
 		maxSegSize = DefaultSegmentSize
 	}
 
-	seg, err := CreateSegment(dir, 1)
+	seg, err := CreateSegment(dir, startID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,25 +70,21 @@ func (w *Writer) Append(rec Record) error {
 	payloadLen := uint32(len(rec.Payload))
 	recordTotalSize := uint64(RecordHeaderSize + payloadLen)
 
-	// Check if segment rollover is required
 	if w.currSegment.size+recordTotalSize > w.maxSegSize {
 		if err := w.rollSegmentLocked(); err != nil {
 			return err
 		}
 	}
 
-	// Prepare record header
 	var header [RecordHeaderSize]byte
 	binary.BigEndian.PutUint32(header[0:4], payloadLen)
 	header[4] = byte(rec.Type)
 	binary.BigEndian.PutUint64(header[5:13], uint64(rec.Term))
 	binary.BigEndian.PutUint64(header[13:21], uint64(rec.Index))
 
-	// Compute CRC32-C over payload
 	crc := core.ChecksumCRC32(rec.Payload)
 	binary.BigEndian.PutUint32(header[21:25], crc)
 
-	// Write header and payload
 	if _, err := w.currSegment.file.Write(header[:]); err != nil {
 		return err
 	}
