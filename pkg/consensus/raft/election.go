@@ -18,7 +18,7 @@ func (r *Node) startPreVote() {
 	lastLogTerm := r.log.LastTerm()
 
 	args := &protocol.RequestVoteArgs{
-		Term:         r.term + 1, // speculative next term
+		Term:         r.term + 1,
 		CandidateID:  r.cfg.NodeID,
 		LastLogIndex: lastLogIndex,
 		LastLogTerm:  lastLogTerm,
@@ -26,7 +26,7 @@ func (r *Node) startPreVote() {
 	}
 
 	payload := protocol.EncodeRequestVoteArgs(args)
-	_ = r.transport.Broadcast(r.cfg.Peers, protocol.MsgRequestVote, payload)
+	_ = r.transport.Broadcast(r.cfg.NodeID, r.cfg.Peers, protocol.MsgRequestVote, payload)
 }
 
 // startElection increments the term, transitions to Candidate, votes for self, and requests votes.
@@ -51,13 +51,20 @@ func (r *Node) startElection() {
 	}
 
 	payload := protocol.EncodeRequestVoteArgs(args)
-	_ = r.transport.Broadcast(r.cfg.Peers, protocol.MsgRequestVote, payload)
+	_ = r.transport.Broadcast(r.cfg.NodeID, r.cfg.Peers, protocol.MsgRequestVote, payload)
 
 	r.checkElectionQuorum()
 }
 
 // handleRequestVote evaluates incoming vote requests according to Raft election safety rules.
 func (r *Node) handleRequestVote(args *protocol.RequestVoteArgs) *protocol.RequestVoteReply {
+	if args.Term > r.term && !args.IsPreVote {
+		r.term = args.Term
+		r.role = core.RoleFollower
+		r.votedFor = 0
+		r.leaderID = 0
+	}
+
 	reply := &protocol.RequestVoteReply{
 		Term:        r.term,
 		VoteGranted: false,
@@ -66,13 +73,6 @@ func (r *Node) handleRequestVote(args *protocol.RequestVoteArgs) *protocol.Reque
 
 	if args.Term < r.term {
 		return reply
-	}
-
-	if args.Term > r.term && !args.IsPreVote {
-		r.term = args.Term
-		r.role = core.RoleFollower
-		r.votedFor = 0
-		r.leaderID = 0
 	}
 
 	canVote := false
@@ -86,7 +86,6 @@ func (r *Node) handleRequestVote(args *protocol.RequestVoteArgs) *protocol.Reque
 		lastIdx := r.log.LastIndex()
 		lastTerm := r.log.LastTerm()
 
-		// Candidate's log is at least as up-to-date as receiver's log
 		logOk := false
 		if args.LastLogTerm > lastTerm {
 			logOk = true
@@ -153,7 +152,6 @@ func (r *Node) becomeLeader() {
 		}
 	}
 
-	// Append empty no-op entry to commit prior term entries
 	noop := protocol.RaftLogEntry{
 		Term:  r.term,
 		Index: lastIdx + 1,
@@ -165,7 +163,6 @@ func (r *Node) becomeLeader() {
 }
 
 func (r *Node) resetElectionDeadline() {
-	// Add 0-150ms randomized jitter to prevent split votes
 	jitter := time.Duration(rand.Int63n(int64(150 * time.Millisecond)))
 	r.electionDeadline = time.Now().Add(r.cfg.ElectionTimeout + jitter)
 }

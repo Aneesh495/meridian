@@ -9,8 +9,8 @@ import (
 
 // Transport defines the communication interface for sending Raft RPC frames to peer nodes.
 type Transport interface {
-	Send(to core.NodeID, msgType protocol.MsgType, payload []byte) error
-	Broadcast(peers []core.NodeID, msgType protocol.MsgType, payload []byte) error
+	Send(from, to core.NodeID, msgType protocol.MsgType, payload []byte) error
+	Broadcast(from core.NodeID, peers []core.NodeID, msgType protocol.MsgType, payload []byte) error
 }
 
 // MemoryTransport provides zero-copy in-memory message routing between simulated Raft nodes.
@@ -34,7 +34,7 @@ func (m *MemoryTransport) Register(nodeID core.NodeID, handler func(from core.No
 }
 
 // Send routes a message directly to the target node's handler.
-func (m *MemoryTransport) Send(to core.NodeID, msgType protocol.MsgType, payload []byte) error {
+func (m *MemoryTransport) Send(from, to core.NodeID, msgType protocol.MsgType, payload []byte) error {
 	m.mu.RLock()
 	handler, ok := m.handlers[to]
 	m.mu.RUnlock()
@@ -43,14 +43,14 @@ func (m *MemoryTransport) Send(to core.NodeID, msgType protocol.MsgType, payload
 		return core.ErrPartitionUnreachable
 	}
 
-	go handler(0, msgType, payload)
+	go handler(from, msgType, payload)
 	return nil
 }
 
 // Broadcast sends a message to all specified peer nodes.
-func (m *MemoryTransport) Broadcast(peers []core.NodeID, msgType protocol.MsgType, payload []byte) error {
+func (m *MemoryTransport) Broadcast(from core.NodeID, peers []core.NodeID, msgType protocol.MsgType, payload []byte) error {
 	for _, p := range peers {
-		_ = m.Send(p, msgType, payload)
+		_ = m.Send(from, p, msgType, payload)
 	}
 	return nil
 }

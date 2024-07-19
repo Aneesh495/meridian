@@ -23,7 +23,6 @@ func (r *Node) sendAppendEntries(to core.NodeID) {
 	prevIndex := prog.NextIndex - 1
 	prevTerm, err := r.log.Term(prevIndex)
 	if err != nil {
-		// If prevIndex has been compacted into a snapshot, trigger snapshot streaming
 		r.sendInstallSnapshot(to)
 		return
 	}
@@ -40,7 +39,7 @@ func (r *Node) sendAppendEntries(to core.NodeID) {
 	}
 
 	payload := protocol.EncodeAppendEntriesArgs(args)
-	_ = r.transport.Send(to, protocol.MsgAppendEntries, payload)
+	_ = r.transport.Send(r.cfg.NodeID, to, protocol.MsgAppendEntries, payload)
 }
 
 func (r *Node) handleAppendEntries(args *protocol.AppendEntriesArgs) *protocol.AppendEntriesReply {
@@ -55,7 +54,6 @@ func (r *Node) handleAppendEntries(args *protocol.AppendEntriesArgs) *protocol.A
 		return reply
 	}
 
-	// Legitimate leader confirmed
 	r.resetElectionDeadline()
 	if args.Term > r.term || r.role != core.RoleFollower {
 		r.term = args.Term
@@ -64,7 +62,6 @@ func (r *Node) handleAppendEntries(args *protocol.AppendEntriesArgs) *protocol.A
 	}
 	r.leaderID = args.LeaderID
 
-	// Check if log contains an entry at PrevLogIndex matching PrevLogTerm
 	prevTerm, err := r.log.Term(args.PrevLogIndex)
 	if err != nil {
 		reply.RejectReason = "missing prevLogIndex"
@@ -73,12 +70,10 @@ func (r *Node) handleAppendEntries(args *protocol.AppendEntriesArgs) *protocol.A
 	}
 	if prevTerm != args.PrevLogTerm {
 		reply.RejectReason = "term mismatch at prevLogIndex"
-		// Optimize recovery: reject back to prevLogIndex
 		reply.MatchIndex = args.PrevLogIndex
 		return reply
 	}
 
-	// Append entries, truncating conflicting suffixes if any
 	for _, entry := range args.Entries {
 		if entry.Index <= r.log.LastIndex() {
 			existingTerm, _ := r.log.Term(entry.Index)
@@ -91,7 +86,6 @@ func (r *Node) handleAppendEntries(args *protocol.AppendEntriesArgs) *protocol.A
 		}
 	}
 
-	// Advance commit index if leader commit is ahead
 	if args.LeaderCommit > r.log.commitIndex {
 		lastNewIndex := args.PrevLogIndex + core.Index(len(args.Entries))
 		if args.LeaderCommit < lastNewIndex {
@@ -133,7 +127,6 @@ func (r *Node) handleAppendEntriesReply(from core.NodeID, reply *protocol.Append
 		prog.LastContact = time.Now().UnixNano()
 		r.checkCommitQuorum()
 	} else {
-		// Decrement nextIndex and retry immediately
 		if prog.NextIndex > 1 {
 			prog.NextIndex--
 		}
@@ -143,20 +136,18 @@ func (r *Node) handleAppendEntriesReply(from core.NodeID, reply *protocol.Append
 
 func (r *Node) checkCommitQuorum() {
 	matchIndexes := make([]uint64, 0, len(r.cfg.Peers)+1)
-	matchIndexes = append(matchIndexes, uint64(r.log.LastIndex())) // leader's own index
+	matchIndexes = append(matchIndexes, uint64(r.log.LastIndex()))
 	for _, prog := range r.progress {
 		matchIndexes = append(matchIndexes, uint64(prog.MatchIndex))
 	}
 
 	sort.Slice(matchIndexes, func(i, j int) bool { return matchIndexes[i] < matchIndexes[j] })
 
-	// Median index represents majority agreement
 	quorumIdx := len(matchIndexes) / 2
 	median := core.Index(matchIndexes[quorumIdx])
 
 	if median > r.log.commitIndex {
 		medianTerm, err := r.log.Term(median)
-		// Only commit entries from the current term directly (Raft figure 8 safety rule)
 		if err == nil && medianTerm == r.term {
 			r.log.commitIndex = median
 			r.applyEntries()
@@ -179,7 +170,6 @@ func (r *Node) applyEntries() {
 		}
 		r.log.appliedIndex = nextIdx
 
-		// Notify waiting client propose channels if any
 		if ch, ok := r.proposeWaiters[nextIdx]; ok {
 			close(ch)
 			delete(r.proposeWaiters, nextIdx)
