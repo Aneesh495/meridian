@@ -1,7 +1,6 @@
 package txn
 
 import (
-	"bytes"
 	"sync"
 	"time"
 
@@ -44,14 +43,11 @@ func (lt *LockTable) Acquire(lock *LockInfo) (*LockInfo, bool) {
 	kStr := string(lock.Key)
 	existing, ok := lt.locks[kStr]
 	if ok {
-		// If held by the same transaction, allow idempotent lock update
 		if existing.TxnID == lock.TxnID {
 			lt.locks[kStr] = lock
 			return nil, true
 		}
-		// Check if existing lock has expired
 		if time.Now().After(existing.ExpiresAt) {
-			// Expired lock can be usurped
 			lt.locks[kStr] = lock
 			return nil, true
 		}
