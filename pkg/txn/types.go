@@ -5,6 +5,7 @@ import (
 
 	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/hlc"
+	"github.com/Aneesh495/meridian/pkg/protocol"
 )
 
 // IsolationLevel defines the transactional consistency guarantee.
@@ -32,11 +33,7 @@ var DefaultOptions = Options{
 }
 
 // Mutation specifies a key-value modification within a transaction.
-type Mutation struct {
-	Op    core.OpType
-	Key   []byte
-	Value []byte
-}
+type Mutation = protocol.Mutation
 
 // Descriptor contains the complete metadata of a distributed transaction.
 type Descriptor struct {
