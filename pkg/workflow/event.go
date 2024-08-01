@@ -3,7 +3,6 @@ package workflow
 import (
 	"fmt"
 
-	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/hlc"
 )
 
@@ -76,8 +75,8 @@ type HistoryEvent struct {
 
 // ActivityTaskOptions configures timeouts and retry policy for an activity execution.
 type ActivityTaskOptions struct {
-	Timeout          uint64  `json:"timeout"` // in milliseconds
-	MaxAttempts      int     `json:"max_attempts"`
-	InitialInterval  uint64  `json:"init_interval"`
-	BackoffMult      float64 `json:"backoff_mult"`
+	Timeout         uint64  `json:"timeout"`
+	MaxAttempts     int     `json:"max_attempts"`
+	InitialInterval uint64  `json:"init_interval"`
+	BackoffMult     float64 `json:"backoff_mult"`
 }
