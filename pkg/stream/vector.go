@@ -1,8 +1,6 @@
 package stream
 
 import (
-	"fmt"
-
 	"github.com/Aneesh495/meridian/pkg/core"
 )
 
