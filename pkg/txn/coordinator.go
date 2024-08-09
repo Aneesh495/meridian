@@ -51,6 +51,11 @@ func (c *Coordinator) Begin(opts Options) *Transaction {
 	}
 }
 
+// Clock returns the coordinator's Hybrid Logical Clock.
+func (c *Coordinator) Clock() *hlc.Clock {
+	return c.clock
+}
+
 // Transaction manages the lifecycle of an individual distributed ACID transaction.
 type Transaction struct {
 	mu        sync.RWMutex
@@ -67,6 +72,11 @@ type Transaction struct {
 // TxnID returns the unique transaction identifier.
 func (tx *Transaction) TxnID() core.TxnID {
 	return tx.txnID
+}
+
+// StartTS returns the transaction start timestamp.
+func (tx *Transaction) StartTS() hlc.Timestamp {
+	return tx.startTS
 }
 
 // Put buffers a write mutation.

@@ -37,7 +37,8 @@ func (h *Handler) HandleFrame(from core.NodeID, frame *protocol.Frame) (*protoco
 	case protocol.MsgKVGet:
 		// Simple direct storage read
 		// Payload: key
-		val, _, err := h.storage.Get(frame.Payload, h.txnCoord.Begin(txn.DefaultOptions).TxnID().(any).(struct{ StartTS interface{} }).StartTS.(struct{ WallTime int64; Logical uint16; NodeID core.NodeID }))
+		readTS := h.txnCoord.Clock().Now()
+		val, _, err := h.storage.Get(frame.Payload, readTS)
 		if err != nil {
 			errResp := protocol.NewFrame(frame.StreamID, protocol.MsgError, []byte(err.Error()))
 			errResp.Flags |= protocol.FlagResponse
