@@ -466,3 +466,487 @@ func DecodePrewriteRequest(data []byte) (*PrewriteRequest, error) {
 		Mutations:   mutations,
 	}, nil
 }
+
+// EncodePrewriteResponse serializes PrewriteResponse.
+func EncodePrewriteResponse(resp *PrewriteResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	if resp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	buf.WriteString(resp.Error)
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodePrewriteResponse deserializes PrewriteResponse.
+func DecodePrewriteResponse(data []byte) (*PrewriteResponse, error) {
+	r := core.WrapByteBuffer(data)
+	s, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	return &PrewriteResponse{
+		Success: s == 1,
+		Error:   errMsg,
+	}, nil
+}
+
+// EncodeCommitRequest serializes CommitRequest.
+func EncodeCommitRequest(req *CommitRequest) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteString(string(req.TxnID))
+	var tsBuf [hlc.BinarySize]byte
+	req.CommitTS.Encode(tsBuf[:])
+	buf.WriteRaw(tsBuf[:])
+
+	buf.WriteUvarint(uint64(len(req.Keys)))
+	for _, k := range req.Keys {
+		buf.WriteBytes(k)
+	}
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeCommitRequest deserializes CommitRequest.
+func DecodeCommitRequest(data []byte) (*CommitRequest, error) {
+	r := core.WrapByteBuffer(data)
+	txnID, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	tsBytes, err := r.ReadRaw(hlc.BinarySize)
+	if err != nil {
+		return nil, err
+	}
+	commitTS, err := hlc.Decode(tsBytes)
+	if err != nil {
+		return nil, err
+	}
+	numKeys, err := r.ReadUvarint()
+	if err != nil {
+		return nil, err
+	}
+	keys := make([][]byte, numKeys)
+	for i := uint64(0); i < numKeys; i++ {
+		k, err := r.ReadBytes()
+		if err != nil {
+			return nil, err
+		}
+		keys[i] = k
+	}
+	return &CommitRequest{
+		TxnID:    core.TxnID(txnID),
+		CommitTS: commitTS,
+		Keys:     keys,
+	}, nil
+}
+
+// EncodeCommitResponse serializes CommitResponse.
+func EncodeCommitResponse(resp *CommitResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	if resp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	buf.WriteString(resp.Error)
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeCommitResponse deserializes CommitResponse.
+func DecodeCommitResponse(data []byte) (*CommitResponse, error) {
+	r := core.WrapByteBuffer(data)
+	s, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	return &CommitResponse{
+		Success: s == 1,
+		Error:   errMsg,
+	}, nil
+}
+
+// EncodeRollbackRequest serializes RollbackRequest.
+func EncodeRollbackRequest(req *RollbackRequest) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteString(string(req.TxnID))
+	buf.WriteUvarint(uint64(len(req.Keys)))
+	for _, k := range req.Keys {
+		buf.WriteBytes(k)
+	}
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeRollbackRequest deserializes RollbackRequest.
+func DecodeRollbackRequest(data []byte) (*RollbackRequest, error) {
+	r := core.WrapByteBuffer(data)
+	txnID, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	numKeys, err := r.ReadUvarint()
+	if err != nil {
+		return nil, err
+	}
+	keys := make([][]byte, numKeys)
+	for i := uint64(0); i < numKeys; i++ {
+		k, err := r.ReadBytes()
+		if err != nil {
+			return nil, err
+		}
+		keys[i] = k
+	}
+	return &RollbackRequest{
+		TxnID: core.TxnID(txnID),
+		Keys:  keys,
+	}, nil
+}
+
+// EncodeRollbackResponse serializes RollbackResponse.
+func EncodeRollbackResponse(resp *RollbackResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	if resp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	buf.WriteString(resp.Error)
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeRollbackResponse deserializes RollbackResponse.
+func DecodeRollbackResponse(data []byte) (*RollbackResponse, error) {
+	r := core.WrapByteBuffer(data)
+	s, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	return &RollbackResponse{
+		Success: s == 1,
+		Error:   errMsg,
+	}, nil
+}
+
+// EncodeKVGetRequest serializes KVGetRequest.
+func EncodeKVGetRequest(req *KVGetRequest) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteBytes(req.Key)
+	var tsBuf [hlc.BinarySize]byte
+	req.ReadTS.Encode(tsBuf[:])
+	buf.WriteRaw(tsBuf[:])
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVGetRequest deserializes KVGetRequest.
+func DecodeKVGetRequest(data []byte) (*KVGetRequest, error) {
+	r := core.WrapByteBuffer(data)
+	k, err := r.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	tsBytes, err := r.ReadRaw(hlc.BinarySize)
+	if err != nil {
+		return nil, err
+	}
+	readTS, err := hlc.Decode(tsBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &KVGetRequest{
+		Key:    k,
+		ReadTS: readTS,
+	}, nil
+}
+
+// EncodeKVGetResponse serializes KVGetResponse.
+func EncodeKVGetResponse(resp *KVGetResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	if resp.Found {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	buf.WriteBytes(resp.Value)
+	var tsBuf [hlc.BinarySize]byte
+	resp.TS.Encode(tsBuf[:])
+	buf.WriteRaw(tsBuf[:])
+	buf.WriteString(resp.Error)
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVGetResponse deserializes KVGetResponse.
+func DecodeKVGetResponse(data []byte) (*KVGetResponse, error) {
+	r := core.WrapByteBuffer(data)
+	foundByte, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	val, err := r.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	tsBytes, err := r.ReadRaw(hlc.BinarySize)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := hlc.Decode(tsBytes)
+	if err != nil {
+		return nil, err
+	}
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	return &KVGetResponse{
+		Found: foundByte == 1,
+		Value: val,
+		TS:    ts,
+		Error: errMsg,
+	}, nil
+}
+
+// EncodeKVPutRequest serializes KVPutRequest.
+func EncodeKVPutRequest(req *KVPutRequest) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteBytes(req.Key)
+	buf.WriteBytes(req.Value)
+	var tsBuf [hlc.BinarySize]byte
+	req.TS.Encode(tsBuf[:])
+	buf.WriteRaw(tsBuf[:])
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVPutRequest deserializes KVPutRequest.
+func DecodeKVPutRequest(data []byte) (*KVPutRequest, error) {
+	r := core.WrapByteBuffer(data)
+	k, err := r.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	v, err := r.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	tsBytes, err := r.ReadRaw(hlc.BinarySize)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := hlc.Decode(tsBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &KVPutRequest{
+		Key:   k,
+		Value: v,
+		TS:    ts,
+	}, nil
+}
+
+// EncodeKVPutResponse serializes KVPutResponse.
+func EncodeKVPutResponse(resp *KVPutResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	if resp.Success {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	buf.WriteString(resp.Error)
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVPutResponse deserializes KVPutResponse.
+func DecodeKVPutResponse(data []byte) (*KVPutResponse, error) {
+	r := core.WrapByteBuffer(data)
+	s, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	return &KVPutResponse{
+		Success: s == 1,
+		Error:   errMsg,
+	}, nil
+}
+
+// KVScanRequest requests a range or prefix scan over multi-version keys.
+type KVScanRequest struct {
+	Prefix []byte
+	Limit  uint32
+	ReadTS hlc.Timestamp
+}
+
+// KVScanEntry is a scanned key-value pair with version timestamp.
+type KVScanEntry struct {
+	Key   []byte
+	Value []byte
+	TS    hlc.Timestamp
+}
+
+// KVScanResponse returns scanned key-value pairs.
+type KVScanResponse struct {
+	Entries []KVScanEntry
+	Error   string
+}
+
+// EncodeKVScanRequest serializes KVScanRequest.
+func EncodeKVScanRequest(req *KVScanRequest) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteBytes(req.Prefix)
+	buf.WriteUint32(req.Limit)
+	var tsBuf [hlc.BinarySize]byte
+	req.ReadTS.Encode(tsBuf[:])
+	buf.WriteRaw(tsBuf[:])
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVScanRequest deserializes KVScanRequest.
+func DecodeKVScanRequest(data []byte) (*KVScanRequest, error) {
+	r := core.WrapByteBuffer(data)
+	prefix, err := r.ReadBytes()
+	if err != nil {
+		return nil, err
+	}
+	limit, err := r.ReadUint32()
+	if err != nil {
+		return nil, err
+	}
+	tsBytes, err := r.ReadRaw(hlc.BinarySize)
+	if err != nil {
+		return nil, err
+	}
+	readTS, err := hlc.Decode(tsBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &KVScanRequest{
+		Prefix: prefix,
+		Limit:  limit,
+		ReadTS: readTS,
+	}, nil
+}
+
+// EncodeKVScanResponse serializes KVScanResponse.
+func EncodeKVScanResponse(resp *KVScanResponse) []byte {
+	buf := core.GlobalByteBufferPool.Get()
+	defer core.GlobalByteBufferPool.Put(buf)
+
+	buf.WriteString(resp.Error)
+	buf.WriteUvarint(uint64(len(resp.Entries)))
+	var tsBuf [hlc.BinarySize]byte
+	for _, e := range resp.Entries {
+		buf.WriteBytes(e.Key)
+		buf.WriteBytes(e.Value)
+		e.TS.Encode(tsBuf[:])
+		buf.WriteRaw(tsBuf[:])
+	}
+
+	res := make([]byte, buf.Len())
+	copy(res, buf.Bytes())
+	return res
+}
+
+// DecodeKVScanResponse deserializes KVScanResponse.
+func DecodeKVScanResponse(data []byte) (*KVScanResponse, error) {
+	r := core.WrapByteBuffer(data)
+	errMsg, err := r.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	numEntries, err := r.ReadUvarint()
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]KVScanEntry, numEntries)
+	for i := uint64(0); i < numEntries; i++ {
+		k, err := r.ReadBytes()
+		if err != nil {
+			return nil, err
+		}
+		v, err := r.ReadBytes()
+		if err != nil {
+			return nil, err
+		}
+		tsBytes, err := r.ReadRaw(hlc.BinarySize)
+		if err != nil {
+			return nil, err
+		}
+		ts, err := hlc.Decode(tsBytes)
+		if err != nil {
+			return nil, err
+		}
+		entries[i] = KVScanEntry{
+			Key:   k,
+			Value: v,
+			TS:    ts,
+		}
+	}
+	return &KVScanResponse{
+		Entries: entries,
+		Error:   errMsg,
+	}, nil
+}
