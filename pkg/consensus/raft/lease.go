@@ -1,19 +1,17 @@
 package raft
 
 import (
-	"time"
-
 	"github.com/Aneesh495/meridian/pkg/core"
 )
 
 // renewLeaderLease extends the leader lease deadline upon quorum heartbeat or commit acknowledgment.
 func (r *Node) renewLeaderLease() {
-	r.leaseExpires = time.Now().Add(r.cfg.LeaderLeaseTTL)
+	r.leaseExpires = r.Now().Add(r.cfg.LeaderLeaseTTL)
 }
 
 // HasValidLease returns true if the leader currently holds a valid lease.
 func (r *Node) HasValidLease() bool {
-	return r.role == core.RoleLeader && time.Now().Before(r.leaseExpires)
+	return r.role == core.RoleLeader && r.Now().Before(r.leaseExpires)
 }
 
 // LinearizableReadIndex returns the linearizable commit index.

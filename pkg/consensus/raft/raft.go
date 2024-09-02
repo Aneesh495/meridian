@@ -32,8 +32,25 @@ type Node struct {
 	snapshotData     []byte
 	snapshotIndex    core.Index
 	snapshotTerm     core.Term
+	timeSource       func() time.Time
 	stopChan         chan struct{}
 	stopped          bool
+}
+
+// SetTimeSource configures an explicit physical or virtual time provider.
+func (r *Node) SetTimeSource(ts func() time.Time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.timeSource = ts
+	r.resetElectionDeadline()
+}
+
+// Now returns current time according to configured physical or virtual time provider.
+func (r *Node) Now() time.Time {
+	if r.timeSource != nil {
+		return r.timeSource()
+	}
+	return time.Now()
 }
 
 // NewNode instantiates a new Raft Node.
@@ -90,7 +107,7 @@ func (r *Node) Tick() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	now := time.Now()
+	now := r.Now()
 
 	switch r.role {
 	case core.RoleFollower, core.RoleCandidate:

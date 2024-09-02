@@ -2,7 +2,6 @@ package raft
 
 import (
 	"sort"
-	"time"
 
 	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/protocol"
@@ -124,7 +123,7 @@ func (r *Node) handleAppendEntriesReply(from core.NodeID, reply *protocol.Append
 			prog.MatchIndex = reply.MatchIndex
 			prog.NextIndex = reply.MatchIndex + 1
 		}
-		prog.LastContact = time.Now().UnixNano()
+		prog.LastContact = r.Now().UnixNano()
 		r.checkCommitQuorum()
 	} else {
 		if prog.NextIndex > 1 {

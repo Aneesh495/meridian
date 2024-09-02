@@ -164,5 +164,5 @@ func (r *Node) becomeLeader() {
 
 func (r *Node) resetElectionDeadline() {
 	jitter := time.Duration(rand.Int63n(int64(150 * time.Millisecond)))
-	r.electionDeadline = time.Now().Add(r.cfg.ElectionTimeout + jitter)
+	r.electionDeadline = r.Now().Add(r.cfg.ElectionTimeout + jitter)
 }
