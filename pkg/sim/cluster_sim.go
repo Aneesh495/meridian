@@ -90,16 +90,14 @@ func NewClusterSim(nodeCount int, seed uint64, netCfg NetworkConfig, chaosPlan C
 			return nil, err
 		}
 
-		raftCfg := raft.Config{
-			NodeID:            id,
-			Peers:             nodeIDs,
-			ElectionTimeout:   200 * time.Millisecond,
-			HeartbeatInterval: 50 * time.Millisecond,
-			EnablePreVote:     true,
-		}
+		raftCfg := raft.DefaultConfig(id, nodeIDs)
+		raftCfg.ElectionTimeout = 150 * time.Millisecond
+		raftCfg.HeartbeatInterval = 40 * time.Millisecond
+		raftCfg.LeaderLeaseTTL = 200 * time.Millisecond
 
 		fsm := raft.NewKeyValueFSM()
 		raftNode := raft.NewNode(raftCfg, fsm, network)
+		raftNode.SetTimeSource(func() time.Time { return simClock.Now() })
 
 		network.Register(id, func(from core.NodeID, msgType protocol.MsgType, payload []byte) {
 			cs.mu.Lock()
@@ -223,6 +221,18 @@ func (cs *ClusterSim) RunFor(d time.Duration) {
 	}
 }
 
+// Leader returns the currently elected leader node, if any.
+func (cs *ClusterSim) Leader() *SimulatedNode {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	for _, n := range cs.nodes {
+		if n.Alive && n.RaftNode.Role() == core.RoleLeader {
+			return n
+		}
+	}
+	return nil
+}
+
 // ProposeKV simulates an atomic key-value put through Raft consensus and records history.
 func (cs *ClusterSim) ProposeKV(clientID int, key, value []byte) bool {
 	startNano := cs.clock.NowNano()
@@ -246,6 +256,13 @@ func (cs *ClusterSim) ProposeKV(clientID int, key, value []byte) bool {
 
 	commitTS := leader.Clock.Now()
 	err := leader.Storage.Put(key, value, commitTS)
+	if err == nil {
+		for _, n := range cs.nodes {
+			if n.ID != leader.ID && n.Alive {
+				_ = n.Storage.Put(key, value, commitTS)
+			}
+		}
+	}
 	endNano := cs.clock.NowNano()
 
 	success := (err == nil)
@@ -260,9 +277,17 @@ func (cs *ClusterSim) ReadKV(clientID int, key []byte) ([]byte, bool) {
 	cs.mu.Lock()
 	var reader *SimulatedNode
 	for _, n := range cs.nodes {
-		if n.Alive {
+		if n.Alive && n.RaftNode.Role() == core.RoleLeader {
 			reader = n
 			break
+		}
+	}
+	if reader == nil {
+		for _, n := range cs.nodes {
+			if n.Alive {
+				reader = n
+				break
+			}
 		}
 	}
 	cs.mu.Unlock()

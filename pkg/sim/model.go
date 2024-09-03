@@ -37,6 +37,10 @@ func (rm RegisterModel) Init() any {
 
 // Step computes sequential register transitions.
 func (rm RegisterModel) Step(state any, op Operation) (any, any, bool) {
+	if !op.Ok {
+		return state, op.Output, true
+	}
+
 	switch op.Type {
 	case OpRead:
 		// Reading returns the current state unchanged
@@ -99,6 +103,10 @@ func (km KVModel) Init() any {
 
 // Step applies key-value transitions to an immutable-copy dictionary.
 func (km KVModel) Step(state any, op Operation) (any, any, bool) {
+	if !op.Ok {
+		return state, op.Output, true
+	}
+
 	store := state.(map[string][]byte)
 
 	// Create copy of map to preserve state immutability in search tree
