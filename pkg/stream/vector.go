@@ -138,3 +138,47 @@ func (v *StringVector) Get(i int) (string, bool) {
 	}
 	return v.values[i], true
 }
+
+// BoolVector holds a columnar bit-packed array of booleans.
+type BoolVector struct {
+	bits  *core.BitSet
+	nulls *core.BitSet
+	len   int
+}
+
+// NewBoolVector creates a new BoolVector.
+func NewBoolVector(capacity int) *BoolVector {
+	return &BoolVector{
+		bits:  core.NewBitSet(capacity),
+		nulls: core.NewBitSet(capacity),
+		len:   0,
+	}
+}
+
+func (v *BoolVector) Type() DataType { return TypeBool }
+func (v *BoolVector) Len() int        { return v.len }
+func (v *BoolVector) IsNull(i int) bool { return v.nulls.Test(i) }
+func (v *BoolVector) SetNull(i int)     { v.nulls.Set(i) }
+
+func (v *BoolVector) Append(val bool) {
+	if val {
+		v.bits.Set(v.len)
+	}
+	v.len++
+}
+
+func (v *BoolVector) AppendNull() {
+	v.nulls.Set(v.len)
+	v.len++
+}
+
+func (v *BoolVector) Get(i int) (bool, bool) {
+	if i < 0 || i >= v.len || v.nulls.Test(i) {
+		return false, false
+	}
+	return v.bits.Test(i), true
+}
+
+func (v *BoolVector) BitSet() *core.BitSet {
+	return v.bits
+}
