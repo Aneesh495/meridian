@@ -311,7 +311,16 @@ func (h *HashAggregateOperator) buildOutputChunks() error {
 
 func appendValueToVector(v stream.Vector, val any) {
 	if val == nil {
-		v.SetNull(v.Len())
+		switch vec := v.(type) {
+		case *stream.Int64Vector:
+			vec.AppendNull()
+		case *stream.Float64Vector:
+			vec.AppendNull()
+		case *stream.StringVector:
+			vec.AppendNull()
+		case *stream.BoolVector:
+			vec.AppendNull()
+		}
 		return
 	}
 	switch vec := v.(type) {
@@ -320,14 +329,22 @@ func appendValueToVector(v stream.Vector, val any) {
 			vec.Append(i)
 		} else if i, ok := val.(int); ok {
 			vec.Append(int64(i))
+		} else if f, ok := val.(float64); ok {
+			vec.Append(int64(f))
 		}
 	case *stream.Float64Vector:
 		if f, ok := val.(float64); ok {
 			vec.Append(f)
+		} else if i, ok := val.(int64); ok {
+			vec.Append(float64(i))
+		} else if i, ok := val.(int); ok {
+			vec.Append(float64(i))
 		}
 	case *stream.StringVector:
 		if s, ok := val.(string); ok {
 			vec.Append(s)
+		} else {
+			vec.Append(fmt.Sprint(val))
 		}
 	case *stream.BoolVector:
 		if b, ok := val.(bool); ok {

@@ -83,7 +83,7 @@ func (s *StorageScanOperator) Next() (*stream.Chunk, error) {
 		for cIdx, f := range s.schema.Fields {
 			val, found := doc[f.Name]
 			if !found {
-				vectors[cIdx].SetNull(rowsCollected)
+				appendValueToVector(vectors[cIdx], nil)
 			} else {
 				appendValueToVector(vectors[cIdx], val)
 			}
