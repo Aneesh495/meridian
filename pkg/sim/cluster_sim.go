@@ -312,6 +312,21 @@ func (cs *ClusterSim) History() *History {
 	return cs.history
 }
 
+// Network returns the underlying virtual network mesh.
+func (cs *ClusterSim) Network() *VirtualNetwork {
+	return cs.network
+}
+
+// Chaos returns the chaos monkey fault orchestrator.
+func (cs *ClusterSim) Chaos() *ChaosMonkey {
+	return cs.chaos
+}
+
+// Clock returns the deterministic virtual clock.
+func (cs *ClusterSim) Clock() *Clock {
+	return cs.clock
+}
+
 // Close cleans up simulation storage directories.
 func (cs *ClusterSim) Close() {
 	cs.mu.Lock()
