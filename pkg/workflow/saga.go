@@ -51,6 +51,8 @@ func (s *Saga) Compensate() error {
 		}
 	}
 
+	s.compensations = nil
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
