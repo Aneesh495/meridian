@@ -317,6 +317,11 @@ func (cs *ClusterSim) Network() *VirtualNetwork {
 	return cs.network
 }
 
+// Partitions returns the network partition matrix.
+func (cs *ClusterSim) Partitions() *PartitionMatrix {
+	return cs.partitions
+}
+
 // Chaos returns the chaos monkey fault orchestrator.
 func (cs *ClusterSim) Chaos() *ChaosMonkey {
 	return cs.chaos
