@@ -10,9 +10,11 @@ import (
 
 // startPreVote sends pre-vote inquiries to verify if this node can win an election without bumping term.
 func (r *Node) startPreVote() {
+	r.isPreVote = true
 	r.role = core.RoleCandidate
 	r.votes = make(map[core.NodeID]bool)
 	r.votes[r.cfg.NodeID] = true
+	r.resetElectionDeadline()
 
 	lastLogIndex := r.log.LastIndex()
 	lastLogTerm := r.log.LastTerm()
@@ -27,10 +29,13 @@ func (r *Node) startPreVote() {
 
 	payload := protocol.EncodeRequestVoteArgs(args)
 	_ = r.transport.Broadcast(r.cfg.NodeID, r.cfg.Peers, protocol.MsgRequestVote, payload)
+
+	r.checkElectionQuorum()
 }
 
 // startElection increments the term, transitions to Candidate, votes for self, and requests votes.
 func (r *Node) startElection() {
+	r.isPreVote = false
 	r.term++
 	r.role = core.RoleCandidate
 	r.votedFor = r.cfg.NodeID
@@ -110,6 +115,7 @@ func (r *Node) handleRequestVoteReply(from core.NodeID, reply *protocol.RequestV
 	if reply.Term > r.term {
 		r.term = reply.Term
 		r.role = core.RoleFollower
+		r.isPreVote = false
 		r.votedFor = 0
 		r.leaderID = 0
 		return
@@ -135,7 +141,12 @@ func (r *Node) checkElectionQuorum() {
 	}
 
 	if granted >= quorum {
-		r.becomeLeader()
+		if r.isPreVote {
+			r.isPreVote = false
+			r.startElection()
+		} else {
+			r.becomeLeader()
+		}
 	}
 }
 

@@ -90,7 +90,14 @@ func NewClusterSim(nodeCount int, seed uint64, netCfg NetworkConfig, chaosPlan C
 			return nil, err
 		}
 
-		raftCfg := raft.DefaultConfig(id, nodeIDs)
+		nodePeers := make([]core.NodeID, 0, len(nodeIDs)-1)
+		for _, nid := range nodeIDs {
+			if nid != id {
+				nodePeers = append(nodePeers, nid)
+			}
+		}
+
+		raftCfg := raft.DefaultConfig(id, nodePeers)
 		raftCfg.ElectionTimeout = 150 * time.Millisecond
 		raftCfg.HeartbeatInterval = 40 * time.Millisecond
 		raftCfg.LeaderLeaseTTL = 200 * time.Millisecond

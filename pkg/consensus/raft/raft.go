@@ -26,6 +26,7 @@ type Node struct {
 	transport        Transport
 	progress         map[core.NodeID]*Progress
 	votes            map[core.NodeID]bool
+	isPreVote        bool
 	electionDeadline time.Time
 	leaseExpires     time.Time
 	proposeWaiters   map[core.Index]chan struct{}
