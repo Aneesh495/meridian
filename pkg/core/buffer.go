@@ -63,9 +63,10 @@ func (b *ByteBuffer) SetOffset(off int) error {
 	return nil
 }
 
-// WriteByte appends a single byte.
-func (b *ByteBuffer) WriteByte(val byte) {
+// WriteByte appends a single byte satisfying io.ByteWriter.
+func (b *ByteBuffer) WriteByte(val byte) error {
 	b.buf = append(b.buf, val)
+	return nil
 }
 
 // ReadByte reads a single byte.

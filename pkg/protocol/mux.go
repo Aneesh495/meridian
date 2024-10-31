@@ -130,7 +130,7 @@ func (m *StreamMux) writeLoop() {
 	for {
 		select {
 		case f := <-m.writeQueue:
-			if err := f.WriteTo(m.conn); err != nil {
+			if _, err := f.WriteTo(m.conn); err != nil {
 				m.Close()
 				return
 			}

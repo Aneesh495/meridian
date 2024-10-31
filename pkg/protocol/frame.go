@@ -87,11 +87,11 @@ func (f *Frame) Encode() []byte {
 	return buf
 }
 
-// WriteTo writes the encoded frame directly to an io.Writer.
-func (f *Frame) WriteTo(w io.Writer) error {
+// WriteTo writes the encoded frame directly to an io.Writer satisfying io.WriterTo.
+func (f *Frame) WriteTo(w io.Writer) (int64, error) {
 	encoded := f.Encode()
-	_, err := w.Write(encoded)
-	return err
+	n, err := w.Write(encoded)
+	return int64(n), err
 }
 
 // ReadFrame reads a complete frame from an io.Reader, verifying magic and CRC32.
