@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/consensus/raft"
+	"github.com/Aneesh495/meridian/pkg/core"
 	"github.com/Aneesh495/meridian/pkg/hlc"
 	"github.com/Aneesh495/meridian/pkg/protocol"
 	"github.com/Aneesh495/meridian/pkg/storage"
@@ -49,6 +49,7 @@ func NewClusterSim(nodeCount int, seed uint64, netCfg NetworkConfig, chaosPlan C
 
 	simClock := NewClock(1_000_000_000)
 	rng := NewRNG(seed)
+	electionRNG := NewRNG(rng.Uint64())
 	events := NewEventQueue()
 	partitions := NewPartitionMatrix()
 	network := NewVirtualNetwork(simClock, events, rng, partitions, netCfg)
@@ -99,6 +100,9 @@ func NewClusterSim(nodeCount int, seed uint64, netCfg NetworkConfig, chaosPlan C
 
 		raftCfg := raft.DefaultConfig(id, nodePeers)
 		raftCfg.ElectionTimeout = 150 * time.Millisecond
+		raftCfg.ElectionJitter = func(limit time.Duration) time.Duration {
+			return time.Duration(electionRNG.Intn(int(limit)))
+		}
 		raftCfg.HeartbeatInterval = 40 * time.Millisecond
 		raftCfg.LeaderLeaseTTL = 200 * time.Millisecond
 
@@ -232,7 +236,13 @@ func (cs *ClusterSim) RunFor(d time.Duration) {
 func (cs *ClusterSim) Leader() *SimulatedNode {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
-	for _, n := range cs.nodes {
+	return cs.leaderLocked()
+}
+
+func (cs *ClusterSim) leaderLocked() *SimulatedNode {
+	// A partition can leave leaders in different terms. Pick one in node order.
+	for id := 1; id <= cs.nodeCount; id++ {
+		n := cs.nodes[core.NodeID(id)]
 		if n.Alive && n.RaftNode.Role() == core.RoleLeader {
 			return n
 		}
@@ -244,16 +254,7 @@ func (cs *ClusterSim) Leader() *SimulatedNode {
 func (cs *ClusterSim) ProposeKV(clientID int, key, value []byte) bool {
 	startNano := cs.clock.NowNano()
 
-	// Find current cluster leader
-	cs.mu.Lock()
-	var leader *SimulatedNode
-	for _, n := range cs.nodes {
-		if n.Alive && n.RaftNode.Role() == core.RoleLeader {
-			leader = n
-			break
-		}
-	}
-	cs.mu.Unlock()
+	leader := cs.Leader()
 
 	if leader == nil {
 		endNano := cs.clock.NowNano()
@@ -282,15 +283,10 @@ func (cs *ClusterSim) ReadKV(clientID int, key []byte) ([]byte, bool) {
 	startNano := cs.clock.NowNano()
 
 	cs.mu.Lock()
-	var reader *SimulatedNode
-	for _, n := range cs.nodes {
-		if n.Alive && n.RaftNode.Role() == core.RoleLeader {
-			reader = n
-			break
-		}
-	}
+	reader := cs.leaderLocked()
 	if reader == nil {
-		for _, n := range cs.nodes {
+		for id := 1; id <= cs.nodeCount; id++ {
+			n := cs.nodes[core.NodeID(id)]
 			if n.Alive {
 				reader = n
 				break
