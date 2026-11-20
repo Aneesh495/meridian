@@ -15,6 +15,8 @@ type Config struct {
 	LeaderLeaseTTL    time.Duration
 	EnablePreVote     bool
 	MaxBatchSize      int
+	// ElectionJitter optionally returns a duration in [0, limit) for each election reset.
+	ElectionJitter func(limit time.Duration) time.Duration
 }
 
 // DefaultConfig provides standard recommended defaults for local and cluster environments.

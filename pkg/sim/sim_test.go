@@ -3,6 +3,7 @@ package sim
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -146,6 +147,41 @@ func TestSim_VirtualDisk_TornWriteAndPowerCut(t *testing.T) {
 	// Verify un-synced dirty data was rolled back to durable state
 	if !bytes.Equal(readBuf, initialData) {
 		t.Fatalf("expected %s, got %s", initialData, readBuf)
+	}
+}
+
+func TestSim_ClusterSeedReplaysLeaderAndHistory(t *testing.T) {
+	run := func() (core.NodeID, []Operation) {
+		t.Helper()
+		cs, err := NewClusterSim(5, 42, DefaultNetworkConfig, DefaultChaosPlan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer cs.Close()
+
+		cs.RunFor(800 * time.Millisecond)
+		leader := cs.Leader()
+		if leader == nil {
+			t.Fatal("no leader after warmup")
+		}
+		key := []byte("replay:key")
+		if !cs.ProposeKV(1, key, []byte("value")) {
+			t.Fatal("initial write failed")
+		}
+		cs.RunFor(20 * time.Millisecond)
+		value, ok := cs.ReadKV(2, key)
+		if !ok || string(value) != "value" {
+			t.Fatalf("read after write = %q, ok=%v", value, ok)
+		}
+		return leader.ID, cs.History().Operations()
+	}
+
+	wantLeader, wantHistory := run()
+	for range 8 {
+		leader, history := run()
+		if leader != wantLeader || !reflect.DeepEqual(history, wantHistory) {
+			t.Fatalf("seed 42 did not replay: leader = %d, want %d; history = %v, want %v", leader, wantLeader, history, wantHistory)
+		}
 	}
 }
 
