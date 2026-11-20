@@ -185,16 +185,13 @@ meridian:127.0.0.1:9091> SELECT id, name, age FROM users WHERE age > 21 ORDER BY
 Inject packet loss, link latency spikes, and split-brain partitions, then verify linearizability using the Wing and Gong verifier:
 
 ```bash
-./meridian chaos --nodes 5 --duration 10s --seed 0xDEADBEEF
+make verify
 ```
 
-Output:
-```
-=== Meridian Deterministic Cluster Simulator ===
-Nodes:                5
-Simulation Duration:  10s
-Random Seed:          0xDEADBEEF
-Linearizability:      VERIFIED (0 violations, 1,420 states explored)
+This runs five simulated nodes with seed `42` and checks the resulting read/write history. A successful run prints `STRICT LINEARIZABILITY VERIFIED (PASS)`. To choose a different workload, seed, or packet drop rate, run the CLI directly:
+
+```bash
+./meridian chaos --nodes 5 --ops 20 --seed 0xDEADBEEF --droprate 0.05
 ```
 
 ### 5. Run the End-to-End Distributed Examples

@@ -20,7 +20,7 @@ bench:
 	$(GO) test -v -bench=. -benchmem ./bench/...
 
 verify:
-	$(GO) run ./cmd/meridian verify --seed 42 --nodes 5 --duration 10s
+	$(GO) run ./cmd/meridian chaos --seed 42 --nodes 5 --ops 20
 
 vet:
 	$(GO) vet ./...
